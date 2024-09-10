@@ -10,6 +10,10 @@ from . import album_match
 from . import db
 from . import encode
 from . import user
+from . import discogs_auth
+
+VERSION = '0.0.1'
+USER_AGENT = f'vitals/{VERSION}'
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
@@ -38,7 +42,7 @@ class PrefixMiddleware:
             return [b'this url does not belong to the app']
 
 
-def create_app():
+def create_app(*, vitals_testing=False):
     # check db.env
     if os.getenv('VITALS_PSQL_HOSTNAME') is None:
         raise RuntimeError('source db.env')
@@ -49,6 +53,22 @@ def create_app():
         instance_relative_config=True,
     )
 
+    if vitals_testing:
+        secret_key = 'vitals testing'
+        app.config.update(
+            VITALS_TESTING=True,
+        )
+    elif app.debug:
+        secret_key = 'vitals development'
+    else:
+        secret_key = os.getenv('VITALS_SECRET_KEY')
+        if not secret_key:
+            raise RuntimeError('VITALS_SECRET_KEY is not set')
+
+    app.config.update(
+        SECRET_KEY=secret_key,
+    )
+
     login_manager.init_app(app)
     app.test_client_class = flask_login.FlaskLoginClient
 
@@ -56,6 +76,7 @@ def create_app():
     db.init_app(app)
     encode.init_app(app)
     user.init_app(app)
+    discogs_auth.init_app(app)
 
     if app.debug:
         secret_key = 'development'

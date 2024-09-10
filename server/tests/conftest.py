@@ -8,11 +8,7 @@ resources = pathlib.Path(__file__).parent / 'resources'
 
 @pytest.fixture
 def app():
-    app = vitals.wsgi.create_app()
-    app.config.update({
-        'TESTING': True,
-    })
-    return app
+    return vitals.wsgi.create_app(vitals_testing=True)
 
 
 @pytest.fixture

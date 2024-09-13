@@ -10,9 +10,10 @@ def jsonify(status=200):
     return wrapper
 
 
-def jsonify_error(message=None, status=500):
+def jsonify_error(message=None, status=500, **kwargs):
     response = {
         'status': status,
+        **kwargs,
     }
     if message is not None:
         response['message'] = message

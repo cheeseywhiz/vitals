@@ -15,11 +15,17 @@ else
     flask db-load-test-data
 fi
 
-ARGS="--exitfirst --cov --cov-report html"
+ARGS="--cov --cov-report html"
 
 if [[ $1 == "--debug" ]]; then
     shift
     ARGS="$ARGS --capture=no --pdb"
+fi
+
+if [[ $1 == "--nox" ]]; then
+    shift
+else
+    ARGS="$ARGS --exitfirst"
 fi
 
 python3 -m pytest $ARGS "$@"

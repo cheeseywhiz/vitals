@@ -1,10 +1,15 @@
 import dataclasses
 import os
 import flask
+import flask_login
 import json
+
+login_manager = flask_login.LoginManager()
+
 from . import album_match
 from . import db
 from . import encode
+from . import user
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
@@ -44,9 +49,13 @@ def create_app():
         instance_relative_config=True,
     )
 
+    login_manager.init_app(app)
+    app.test_client_class = flask_login.FlaskLoginClient
+
     album_match.init_app(app)
     db.init_app(app)
     encode.init_app(app)
+    user.init_app(app)
 
     if app.debug:
         secret_key = 'development'

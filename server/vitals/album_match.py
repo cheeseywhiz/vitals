@@ -133,7 +133,7 @@ def test_matcher(queries_dir):
 # Routes
 
 
-@album_match.route('/query_album_match', methods=['POST'])
+@album_match.route('/user/album/query', methods=['POST'])
 def query_album_match():
     file = flask.request.files['query']
     # assume query album will take up about 2/3 of the query picture

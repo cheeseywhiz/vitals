@@ -46,3 +46,8 @@ def user_client(username, password, app):
 @pytest.fixture
 def testuser_client(app):
     yield from user_client('testuser', 'password', app)
+
+
+@pytest.fixture
+def emptyuser_client(app):
+    yield from user_client('emptyuser', 'empty', app)

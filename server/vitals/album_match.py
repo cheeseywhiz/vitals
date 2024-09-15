@@ -4,6 +4,7 @@ from pprint import pprint as pp
 import click
 import cv2 as cv
 import flask
+import flask_login
 import numpy as np
 import werkzeug
 from . import db
@@ -107,7 +108,7 @@ def query_image(library, queries, query_fname):
 @click.command('test-matcher', help='test the album matcher')
 @click.argument('queries_dir', metavar='QUERIES', type=click.Path(exists=True, file_okay=False))
 def test_matcher(queries_dir):
-    library = db.db_load_library()
+    library = db.db_load_library(username='testuser')
     # assume query album will take up about 2/3 of the query picture
     queries = get_filesystem_library(queries_dir, resize_width=RESIZE_WIDTH * 3 // 2)
 
@@ -134,6 +135,7 @@ def test_matcher(queries_dir):
 
 
 @album_match.route('/user/album/query', methods=['POST'])
+@flask_login.login_required
 def query_album_match():
     file = flask.request.files['query']
     # assume query album will take up about 2/3 of the query picture
@@ -143,7 +145,7 @@ def query_album_match():
     queries = {
         'query': img_data,
     }
-    library = db.db_load_library()
+    library = db.db_load_library(flask_login.current_user.username)
     all_matches = query_image(library, queries, 'query')
 
     albums = []

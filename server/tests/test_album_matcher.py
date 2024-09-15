@@ -22,16 +22,23 @@ def post_query(client=None, filename: str | pathlib.Path = None):
         })
 
 
-def test_QueryAlbumMatch_NoFile_ReturnsError(client):
+def test_QueryAlbumMatch_LoggedOut_Unauthorized(client):
+    """if the user is logged out then /query_album_match should return unauthorized"""
+    response = post_query(client).json
+    assert 'status' in response
+    assert response['status'] == 401
+
+
+def test_QueryAlbumMatch_NoFile_ReturnsError(testuser_client):
     """/query_album_match should return an error if the query image was not provided"""
     url = flask.url_for('album_match.query_album_match')
-    response = client.post(url)
+    response = testuser_client.post(url)
     assert response.status_code == 400
 
 
-def test_QueryAlbumMatch_EmptyFile_ReturnsError(client):
+def test_QueryAlbumMatch_EmptyFile_ReturnsError(testuser_client):
     """/query_album_match should return an error if the query image was empty"""
-    response = post_query(filename='/dev/null', client=client)
+    response = post_query(filename='/dev/null', client=testuser_client)
     assert response.status_code == 400
     assert response.json is not None
     assert 'status' in response.json
@@ -40,17 +47,17 @@ def test_QueryAlbumMatch_EmptyFile_ReturnsError(client):
     assert response.json['message']
 
 
-def test_QueryAlbumMatch_BasicQuery_Returns200Json(client):
+def test_QueryAlbumMatch_BasicQuery_Returns200Json(testuser_client):
     """/query_album_match should return properly formatted json with one key 'albums'"""
-    response = post_query(client)
+    response = post_query(testuser_client)
     assert response.status_code == 200
     assert response.json is not None
 
 
-def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(client):
+def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(testuser_client):
     """/query_album_match should return the catalog, album title, and artist for each matching album"""
     # TODO: return album cover URL
-    response = post_query(client).json
+    response = post_query(testuser_client).json
     assert 'albums' in response
     assert len(response['albums']) >= 1
 
@@ -63,12 +70,19 @@ def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(client):
         assert album['artist']
 
 
+def test_QueryAlbumMatch_EmptyUser_EmptyAlbums(emptyuser_client):
+    """if the user does not have a collection then /query_album_match should return an empty albums list"""
+    response = post_query(emptyuser_client).json
+    assert 'albums' in response
+    assert len(response['albums']) == 0
+
+
 @pytest.mark.parametrize('query_fname', queries_dir.iterdir())
-def test_QueryAlbumMatch_BasicQueries_MatchesCorrectly(client, query_fname):
+def test_QueryAlbumMatch_BasicQueries_MatchesCorrectly(testuser_client, query_fname):
     """/query_album_match should return the matching album as the first album in the matches list"""
     # get the catalog from the query_fname
     q_catalog, *_ = query_fname.name.split('.')
-    response = post_query(filename=query_fname, client=client).json
+    response = post_query(filename=query_fname, client=testuser_client).json
 
     album_match = response['albums'][0]
     assert q_catalog == album_match['catalog']

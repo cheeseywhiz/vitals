@@ -79,11 +79,17 @@ def does_db_metadata_exist():
     return any(table.exists for table in cur.fetchall())
 
 
-def db_load_library():
+def db_load_library(username):
     db = get_db().cursor(row_factory=psycopg.rows.dict_row)
     albums = {}
+    query = '''\
+SELECT A.*
+FROM collections C
+JOIN albums A ON A.catalog = C.catalog
+WHERE C.username = %s
+;''', (username, )
 
-    for album in db.execute('SELECT * FROM albums;').fetchall():
+    for album in db.execute(*query).fetchall():
         album['descriptor'] = encode.decode(album['descriptor'])
         albums[album['catalog']] = Album(**album)
 

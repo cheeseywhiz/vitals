@@ -34,6 +34,11 @@ def get_user(username):
     return cur.execute('SELECT * FROM users WHERE username = %s', (username, )).fetchone()
 
 
+@wsgi.login_manager.unauthorized_handler
+def unauthorized_handler():
+    return utils.jsonify_error('unauthorized', status=401)
+
+
 # Routes
 
 

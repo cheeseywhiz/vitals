@@ -23,6 +23,7 @@ class User(flask_login.UserMixin):
     username: str
     password: str
     created: datetime.datetime
+    current_album: str
 
     def get_id(self):
         return self.username
@@ -89,3 +90,41 @@ def user_sign_up():
     pw_hashed = werkzeug.security.generate_password_hash(password)
     db.get_db().execute('INSERT INTO users(username, password) VALUES (%s, %s);', (username, pw_hashed))
     return utils.jsonify_error('successfully signed up user', status=200, username=username)
+
+
+@user_routes.route('/user/album', methods=['GET', 'POST', 'DELETE'])
+@flask_login.login_required
+def user_album():
+    if flask.request.method == 'GET':
+        catalog = flask_login.current_user.current_album
+
+        if catalog is not None:
+            album = db.Album.load(catalog).serialize()
+        else:
+            album = None
+
+        return utils.jsonify()(album=album)
+
+    username = flask_login.current_user.username
+
+    if flask.request.method == 'DELETE':
+        db.get_db().execute('UPDATE users SET current_album = NULL WHERE username = %s', (username, ))
+        return flask.Response(status=204)
+
+    # POST
+
+    # validation
+    if 'catalog' not in flask.request.args:
+        return utils.jsonify_error('catalog not provided', status=400)
+    catalog = flask.request.args['catalog']
+    if not catalog:
+        return utils.jsonify_error('catalog not valid', status=400, catalog=catalog)
+    collection_row = db.get_db().execute(
+        'SELECT 1 as exists FROM collections WHERE username = %s AND catalog = %s',
+        (username, catalog)).fetchone()
+    if collection_row is None:
+        return utils.jsonify_error('album is not in collection', status=400, catalog=catalog)
+
+    # set the currently playing album
+    db.get_db().execute('UPDATE users SET current_album = %s WHERE username = %s', (catalog, username))
+    return utils.jsonify()({})

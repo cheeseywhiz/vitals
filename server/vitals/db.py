@@ -9,6 +9,7 @@ import flask
 import natsort
 import numpy as np
 import psycopg
+from . import db
 from . import encode
 
 
@@ -46,9 +47,21 @@ class Album:
     catalog: str
     title: str
     artist: str
-    discogs_release_id: str
-    created: datetime.datetime
-    descriptor: np.ndarray = dataclasses.field(repr=False)
+    discogs_release_id: str | None = None
+    created: datetime.datetime | None = None
+    descriptor: np.ndarray | None = dataclasses.field(default_factory=lambda: None, repr=None)
+
+    @classmethod
+    def load(cls, catalog):
+        cur = db.get_db().cursor(row_factory=psycopg.rows.class_row(cls))
+        return cur.execute('SELECT catalog, title, artist FROM albums WHERE catalog = %s', (catalog, )).fetchone()
+
+    def serialize(self):
+        return dict(
+            catalog=self.catalog,
+            title=self.title,
+            artist=self.artist,
+        )
 
 
 # Database Helpers

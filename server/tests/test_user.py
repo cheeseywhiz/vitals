@@ -194,3 +194,123 @@ class TestSignUp:
         assert response.status_code == 200
         assert '_user_id' in flask.session
         assert flask.session['_user_id'] == TestSignUp.USERNAME
+
+
+class TestUserAlbum:
+    TEST_CATALOG = 'TPLP101'  # Vespertine
+
+    def post_album(client=None, catalog=TEST_CATALOG):
+        params = {}
+        if catalog is not None:
+            params['catalog'] = catalog
+        url = flask.url_for('user.user_album', **params)
+        return client.post(url)
+
+    def get_album(client):
+        url = flask.url_for('user.user_album')
+        return client.get(url)
+
+    def stop_play(client):
+        url = flask.url_for('user.user_album')
+        return client.delete(url)
+
+    # POST /user/album
+
+    def test_UserAlbum_NotLoggedIn_SetAlbum_Unauthorized(self, client):
+        """if the user is not logged in then setting the current album should return unauthorized"""
+        response = TestUserAlbum.post_album(client)
+        assert response.status_code == 401
+
+    def test_UserAlbum_SetNoAlbum_Invalid(self, testuser_client):
+        """setting the current album should be rejected if no album was provided"""
+        response = TestUserAlbum.post_album(catalog=None, client=testuser_client)
+        assert response.status_code == 400
+
+    def test_UserAlbum_SetEmptyAlbum_Invalid(self, testuser_client):
+        """setting the current album to an empty album should be rejected"""
+        response = TestUserAlbum.post_album(catalog='', client=testuser_client)
+        assert response.status_code == 400
+
+    def test_UserAlbum_SetInvalidAlbum_Invalid(self, testuser_client):
+        """setting the current album to an unknown album should be rejected"""
+        response = TestUserAlbum.post_album(catalog='imadethisup', client=testuser_client)
+        assert response.status_code == 400
+
+    def test_UserAlbum_SetAlbumNotInCollection_Invalid(self, emptyuser_client):
+        """setting the current album to an album that is not in the current collection should be rejected"""
+        response = TestUserAlbum.post_album(client=emptyuser_client)
+        assert response.status_code == 400
+
+    def test_UserAlbum_SetValidAlbum_Returns200Json(self, testuser_client, fresh_db):
+        """setting the current album to a valid album should succeed and return properly formatted data"""
+        response = TestUserAlbum.post_album(testuser_client)
+        assert response.status_code == 200
+        assert response.json is not None
+
+    # GET /user/album
+
+    def test_UserAlbum_NotLoggedIn_GetAlbum_Unauthorized(self, client):
+        """if the user is not logged in then getting the current album should return unauthorized"""
+        response = TestUserAlbum.get_album(client)
+        assert response.status_code == 401
+
+    def test_UserAlbum_SetValidAlbum_GetAlbum_Returns200Json(self, current_album_client):
+        """once a current album is set, getting the current album should succeed and return properly formatted data"""
+        response = TestUserAlbum.get_album(current_album_client)
+        assert response.status_code == 200
+        assert response.json is not None
+
+    def test_UserAlbum_SetValidAlbum_GetAlbum_ReturnsSchema(self, current_album_client):
+        """once a current album is set, getting the current album should return the correct kind of data"""
+        response = TestUserAlbum.get_album(current_album_client).json
+        assert 'album' in response
+        assert 'catalog' in response['album']
+        assert response['album']['catalog']
+        assert 'title' in response['album']
+        assert response['album']['title']
+        assert 'artist' in response['album']
+        assert response['album']['artist']
+
+    def test_UserAlbum_SetValidAlbum_GetAlbum_IsCorrectAlbum(self, current_album_client):
+        """once a current album is set, getting the current album should return the correct album"""
+        response = TestUserAlbum.get_album(current_album_client).json
+        assert response['album']['catalog'] == TestUserAlbum.TEST_CATALOG
+
+    def test_UserAlbum_NoCurrentAlbum_GetAlbum_ReturnsEmpty(self, testuser_client, fresh_db):
+        """if there isn't an album playing then getting the current album should return an empty response"""
+        response = TestUserAlbum.get_album(testuser_client)
+        assert response.status_code == 200
+        assert response.json is not None
+        assert 'album' in response.json
+        assert response.json['album'] is None
+
+    # DELETE /user/album
+
+    def test_UserAlbum_NotLoggedIn_StopPlay_Unauthorized(self, client):
+        """if the user is not logged in then stopping play should return unauthorized"""
+        response = TestUserAlbum.stop_play(client)
+        assert response.status_code == 401
+
+    def test_UserAlbum_NoCurrentAlbum_StopPlay_Succeeds(self, testuser_client, fresh_db):
+        """if there isn't an album playing then stopping play should succeed"""
+        response = TestUserAlbum.stop_play(testuser_client)
+        assert response.status_code == 204
+
+    def test_UserAlbum_NoCurrentAlbum_StopPlay_NoAlbumShouldBePlaying(self, testuser_client, fresh_db):
+        """if there isn't an album playing then stopping play should render no currently playing album"""
+        response = TestUserAlbum.stop_play(testuser_client)
+        assert response.status_code == 204  # smoke test
+        response = TestUserAlbum.get_album(testuser_client).json
+        assert response['album'] is None
+
+    def test_UserAlbum_CurrentlyPlaying_StopPlay_Succeeds(self, current_album_client, fresh_db):
+        """if there is an album playing then stopping play should succeed"""
+        response = TestUserAlbum.stop_play(current_album_client)
+        assert response.status_code == 204
+
+    def test_UserAlbum_CurrentlyPlaying_StopPlay_NoAlbumShouldBePlaying(self, current_album_client, fresh_db):
+        """if there is an album playing then stopping play should render no currently playing album"""
+        response = TestUserAlbum.stop_play(current_album_client)
+        assert response.status_code == 204  # smoke test
+        response = TestUserAlbum.get_album(current_album_client).json
+        assert response['album'] is None

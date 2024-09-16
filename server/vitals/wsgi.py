@@ -3,6 +3,8 @@ import os
 import flask
 import json
 from . import album_match
+from . import db
+from . import encode
 
 
 class DataclassJSONEncoder(json.JSONEncoder):
@@ -32,6 +34,10 @@ class PrefixMiddleware:
 
 
 def create_app():
+    # check db.env
+    if os.getenv('VITALS_PSQL_HOSTNAME') is None:
+        raise RuntimeError('source db.env')
+
     app = App(
         __name__,
         # set files used by the server to a special folder (flask.current_app.instance_path)
@@ -39,11 +45,13 @@ def create_app():
     )
 
     album_match.init_app(app)
+    db.init_app(app)
+    encode.init_app(app)
 
     if app.debug:
         secret_key = 'development'
     else:
-        secret_key = os.getenv('APP_SECRET_KEY')
+        secret_key = os.getenv('VITALS_SECRET_KEY')
 
     app.config.from_mapping(
         SECRET_KEY=secret_key,

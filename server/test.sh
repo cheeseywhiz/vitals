@@ -6,8 +6,20 @@ if [[ $1 == "--help" ]]; then
     exit
 fi
 
-flake8 vitals *.py
+flake8 vitals *.py tests
 
-flask test-matcher
+if [[ $1 == "--no-db" ]]; then
+    shift
+else
+    flask db-reset
+    flask db-load-test-data
+fi
 
-http --multipart POST http://localhost:5001/api/v1/query_album_match query@queries/what-is-beat.png
+ARGS="--exitfirst --cov --cov-report html"
+
+if [[ $1 == "--debug" ]]; then
+    shift
+    ARGS="$ARGS --capture=no --pdb"
+fi
+
+python3 -m pytest $ARGS "$@"

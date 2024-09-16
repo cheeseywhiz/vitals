@@ -1,14 +1,20 @@
 import base64
 import lzma
+import os
 import pickle
-from pprint import pprint as pp
-import numpy as np
+import click
+from . import album_match
 
 PROCESSES = [
     (lambda x: pickle.dumps(x), lambda x: pickle.loads(x)),
     (lambda x: lzma.compress(x), lambda x: lzma.decompress(x)),
     (lambda x: base64.b64encode(x), lambda x: base64.b64decode(x)),
+    (lambda x: x.decode(), lambda x: x.encode()),  # stringify the bytes data
 ]
+
+
+def init_app(app):
+    app.cli.add_command(codegen_descriptor_test_data)
 
 
 def encode(obj):
@@ -25,15 +31,17 @@ def decode(obj):
     return obj
 
 
-def test_encoding(library):
-    pickles_stats = {}
+def get_test_data_descriptors(library):
+    queries = []
 
     for fname, (_, _, _, descriptor) in library.items():
-        save_descriptor = descriptor
-        descriptor = encode(descriptor)
-        pickles_stats[fname] = len(descriptor)
-        descriptor = decode(descriptor)
-        if not np.array_equal(descriptor, save_descriptor):
-            raise RuntimeError
+        catalog, _ = os.path.splitext(fname)
+        queries.append(f"UPDATE albums SET descriptor = {encode(descriptor)!r} WHERE catalog = '{catalog}' ;")
 
-    pp(pickles_stats)
+    return '\n'.join(queries)
+
+
+@click.command('codegen-descriptor-test-data', help='Generate SQL code that sets the descriptor for each album')
+def codegen_descriptor_test_data():
+    library = album_match.get_filesystem_library('album-covers-original', resize_width=album_match.RESIZE_WIDTH)
+    print(get_test_data_descriptors(library))

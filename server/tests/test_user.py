@@ -1,6 +1,41 @@
 import flask
 
 
+class TestMe:
+    def get_me(client):
+        url = flask.url_for('user.user_me')
+        return client.get(url)
+
+    def test_Me_NotLoggedIn_Unauthorized(self, client):
+        """if the user is not logged in /user/me should return unauthorized"""
+        response = TestMe.get_me(client)
+        assert response.status_code == 401
+
+    def test_Me_LoggedIn_Returns200Json(self, testuser_client):
+        """/user/me should return success and properly formatted data"""
+        response = TestMe.get_me(testuser_client)
+        assert response.status_code == 200
+        assert response.json is not None
+
+    def test_Me_LoggedIn_ReturnsCorrectUsername(self, testuser_client):
+        """/user/me should return the username of the logged in user"""
+        response = TestMe.get_me(testuser_client).json
+        assert 'username' in response
+        assert response['username'] == 'testuser'
+
+    def test_Me_Logout_Unauthorized(self, testuser_client):
+        """/user/me should return unauthorized if the user logs out"""
+        TestLogout.logout(testuser_client)
+        response = TestMe.get_me(testuser_client)
+        assert response.status_code == 401
+
+    def test_Me_FabricatedSessionWithInvalidUsername_Unauthorized(self, client):
+        """If the username provided by the session is not a real user, /user/me should return unauthorized"""
+        flask.session['_user_id'] = 'fabricateduser'
+        response = TestMe.get_me(client)
+        assert response.status_code == 401
+
+
 class TestLogin:
     def post_login(client=None, username='testuser', password='password', remember_me=None):
         json = {}
@@ -96,6 +131,8 @@ class TestLogout:
     def logout(client):
         url = flask.url_for('user.user_logout')
         response = client.post(url)
+        # TODO: assert smoke test here
+        # in user commit
         return response
 
     def test_Logout_UserNotLoggedIn_Success(self, client):

@@ -43,6 +43,12 @@ def unauthorized_handler():
 # Routes
 
 
+@user_routes.route('/user/me', methods=['GET'])
+@flask_login.login_required
+def user_me():
+    return utils.jsonify()(username=flask_login.current_user.username)
+
+
 @user_routes.route('/user/login', methods=['POST'])
 def user_login():
     flask.session.clear()

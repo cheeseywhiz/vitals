@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { useUserIdentityQuery } from '../api';
 import NavBar from './NavBar';
-import CurrentAlbum from './CurrentAlbum';
+import ListeningPage from './ListeningPage/ListeningPage';
 import LoginPage from './LoginPage/LoginPage';
 import UserPage from './UserPage';
 
@@ -46,7 +46,7 @@ function RequireAuth({ children }: React.PropsWithChildren<unknown>) {
 export default function App() {
     return <>
         <Routes>
-            <Route path="/" element={<RequireAuth><CurrentAlbum /></RequireAuth>} />
+            <Route path="/" element={<RequireAuth><ListeningPage /></RequireAuth>} />
             <Route path="login" element={<LoginPage />} />
             <Route path="me" element={<RequireAuth><UserPage /></RequireAuth>} />
         </Routes>

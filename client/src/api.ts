@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { UserIdentity, LoginArgs } from './types';
+import type { Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState } from './types';
+import { setSelectedAlbum } from './components/ListeningPage/slice';
 
 const RtkBaseQuery = fetchBaseQuery({
     baseUrl: 'api/v1',
@@ -20,8 +21,9 @@ const VitalsBaseQuery: ReturnType<typeof fetchBaseQuery> = async (args, queryApi
 export const api = createApi({
     reducerPath: 'vitalsApi',
     baseQuery: VitalsBaseQuery,
-    tagTypes: ['UserIdentity'],
+    tagTypes: ['UserIdentity', 'CurrentAlbum'],
     endpoints: (builder) => ({
+        /* user */
         userIdentity: builder.query<UserIdentity, void>({
             providesTags: ['UserIdentity'],
             queryFn: async (_arg, _queryApi, _extraOptions, baseQuery) => {
@@ -41,6 +43,7 @@ export const api = createApi({
             },
         }),
         login: builder.mutation<UserIdentity, LoginArgs>({
+            invalidatesTags: ['CurrentAlbum'],
             query: ({ username, password }) => ({
                 url: 'user/login',
                 method: 'POST',
@@ -89,6 +92,74 @@ export const api = createApi({
                 body: { username, password },
             }),
         }),
+        currentAlbum: builder.query<CurrentAlbumState, void>({
+            providesTags: ['CurrentAlbum'],
+            query: () => 'user/album',
+        }),
+        albumMatch: builder.mutation<AlbumMatchesState, File>({
+            query: (queryImage) => {
+                const formData = new FormData();
+                formData.append('query', queryImage);
+                return {
+                    url: 'user/album/query',
+                    method: 'POST',
+                    body: formData,
+                };
+            },
+            onQueryStarted: async (_args, { dispatch, queryFulfilled }) => {
+                // select the first album
+                let selectedAlbum;
+
+                try {
+                    const { data } = await queryFulfilled;
+                    selectedAlbum = data.albums[0];
+                } catch {
+                    selectedAlbum = null;
+                }
+
+                dispatch(setSelectedAlbum(selectedAlbum));
+            },
+        }),
+        stopPlay: builder.mutation<void, void>({
+            query: () => ({
+                url: 'user/album',
+                method: 'DELETE',
+            }),
+            onQueryStarted: async (_args, { dispatch, queryFulfilled }) => {
+                // clear the currently playing album optimistically
+                const patch: CurrentAlbumState = { album: null };
+
+                const patchResult = dispatch(api.util.updateQueryData('currentAlbum', undefined, (draft) => {
+                    Object.assign(draft, patch);
+                }));
+
+                try {
+                    await queryFulfilled;
+                } catch {
+                    patchResult.undo();
+                }
+            },
+        }),
+        setAlbum: builder.mutation<void, Album>({
+            query: (album) => ({
+                url: `user/album?catalog=${album.catalog}`,
+                method: 'POST',
+            }),
+            onQueryStarted: async (album, { dispatch, queryFulfilled }) => {
+                // set CurrentAlbum optimistically
+                const patch: CurrentAlbumState = { album };
+
+                const patchResult = dispatch(api.util.updateQueryData('currentAlbum', undefined, (draft) => {
+                    Object.assign(draft, patch);
+                }));
+
+                try {
+                    await queryFulfilled;
+                } catch {
+                    patchResult.undo();
+                }
+            },
+        }),
     }),
 });
 
@@ -97,4 +168,8 @@ export const {
     useLoginMutation,
     useLogoutMutation,
     useSignUpMutation,
+    useCurrentAlbumQuery,
+    useStopPlayMutation,
+    useAlbumMatchMutation,
+    useSetAlbumMutation,
 } = api;

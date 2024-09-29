@@ -1,4 +1,5 @@
 import flask
+import functools
 
 
 def jsonify(status=200):
@@ -39,3 +40,16 @@ def get_server_name():
     if host is None:
         raise RuntimeError('get_server_name must have the Host header set')
     return 'http://' + host
+
+
+def slow(*, seconds=5):
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            import time
+            time.sleep(seconds)
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

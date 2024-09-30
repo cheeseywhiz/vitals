@@ -2,6 +2,20 @@ import flask
 import functools
 
 
+def debug(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception:
+            import pdb
+            import sys
+            pdb.post_mortem(sys.exc_info()[2])
+            raise
+
+    return wrapper
+
+
 def jsonify(status=200):
     def wrapper(*args, **kwargs):
         response = flask.jsonify(*args, **kwargs)

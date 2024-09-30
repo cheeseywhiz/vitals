@@ -1,10 +1,12 @@
 import csv
+import functools
 import os
 import discogs_client
 import flask
 import flask_login
 from . import wsgi
 from . import utils
+from . import mock_discogs_client
 
 discogs_routes = flask.Blueprint('discogs', __name__)
 
@@ -14,7 +16,7 @@ def init_app(app):
 
 
 def get_discogs(key=None):
-    if 'discogs' not in flask.g or key is not None:
+    if key is not None or (flask.g and 'discogs' not in flask.g):
         if not os.path.isfile('discogs.csv.secret'):
             raise RuntimeError('discogs auth not enabled: discogs.csv.secret not found')
         with open('discogs.csv.secret') as f:
@@ -32,13 +34,21 @@ def get_discogs(key=None):
         else:
             token, secret = get_discogs_key()
 
-        flask.g.discogs = discogs_client.Client(
+        if token == 'mock_token' and secret == 'mock_secret':
+            return mock_discogs_client.MockDiscogsClient()
+
+        discogs = discogs_client.Client(
             wsgi.USER_AGENT,
             consumer_key=secrets['consumer_key'],
             consumer_secret=secrets['consumer_secret'],
             token=token,
             secret=secret,
         )
+
+        if flask.g:
+            flask.g.discogs = discogs
+        else:
+            return discogs
 
     return flask.g.discogs
 
@@ -162,3 +172,19 @@ def discogs_identity():
         loginUrl=flask.url_for('discogs.login_with_discogs'),
         discogsIdentity=serialized,
     )
+
+
+def discogs_login_required(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if not is_discogs_authenticated():
+            return utils.jsonify_error(message='discogs is not logged in', status=401)
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+@discogs_routes.route('/discogs/mock_setup')
+def discogs_mock_setup():
+    store_discogs_key('mock_token', 'mock_secret')
+    return flask.Response(status=204)

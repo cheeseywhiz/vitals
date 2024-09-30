@@ -12,6 +12,7 @@ from . import db
 from . import encode
 from . import user
 from . import discogs_auth
+from . import discogs_sync
 
 VERSION = '0.0.1'
 USER_AGENT = f'vitals/{VERSION}'
@@ -86,6 +87,7 @@ def create_app(*, vitals_testing=False):
     encode.init_app(app)
     user.init_app(app)
     discogs_auth.init_app(app)
+    discogs_sync.init_app(app)
 
     if app.debug:
         secret_key = 'development'

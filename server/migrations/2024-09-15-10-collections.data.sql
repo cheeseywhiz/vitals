@@ -4,4 +4,5 @@ INSERT INTO collections(username, catalog) VALUES
 ('testuser', '19075965221'),
 ('testuser', 'TPLP101'),
 ('testuser', 'OL 5670'),
-('testuser', 'SP-70040');
+('testuser', 'SP-70040'),
+('testuser', 'TestCategoryNotaReal 001');

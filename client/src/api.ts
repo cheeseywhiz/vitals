@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState } from './types';
+import type { Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState, DiscogsIdentityResponse } from './types';
 import { setSelectedAlbum } from './components/ListeningPage/slice';
 
 const RtkBaseQuery = fetchBaseQuery({
@@ -21,7 +21,7 @@ const VitalsBaseQuery: ReturnType<typeof fetchBaseQuery> = async (args, queryApi
 export const api = createApi({
     reducerPath: 'vitalsApi',
     baseQuery: VitalsBaseQuery,
-    tagTypes: ['UserIdentity', 'CurrentAlbum'],
+    tagTypes: ['UserIdentity', 'CurrentAlbum', 'DiscogsIdentity'],
     endpoints: (builder) => ({
         /* user */
         userIdentity: builder.query<UserIdentity, void>({
@@ -43,7 +43,7 @@ export const api = createApi({
             },
         }),
         login: builder.mutation<UserIdentity, LoginArgs>({
-            invalidatesTags: ['CurrentAlbum'],
+            invalidatesTags: ['CurrentAlbum', 'DiscogsIdentity'],
             query: ({ username, password }) => ({
                 url: 'user/login',
                 method: 'POST',
@@ -160,10 +160,16 @@ export const api = createApi({
                 }
             },
         }),
+        /* discogs */
+        discogsIdentity: builder.query<DiscogsIdentityResponse, void>({
+            providesTags: ['DiscogsIdentity'],
+            query: () => 'discogs/identity',
+        }),
     }),
 });
 
 export const {
+    /* user */
     useUserIdentityQuery,
     useLoginMutation,
     useLogoutMutation,
@@ -172,4 +178,6 @@ export const {
     useStopPlayMutation,
     useAlbumMatchMutation,
     useSetAlbumMutation,
+    /* discogs */
+    useDiscogsIdentityQuery,
 } = api;

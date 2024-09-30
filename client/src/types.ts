@@ -29,3 +29,12 @@ export type CurrentAlbumState = {
 export type AlbumMatchesState = {
     albums: Album[];
 };
+
+export type DiscogsIdentityResponse = {
+    loginUrl: string;
+    discogsIdentity: DiscogsIdentity;
+};
+
+export type DiscogsIdentity = null | {
+    username: string;
+};

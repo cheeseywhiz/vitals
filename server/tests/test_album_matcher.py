@@ -54,9 +54,8 @@ def test_QueryAlbumMatch_BasicQuery_Returns200Json(testuser_client):
     assert response.json is not None
 
 
-def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(testuser_client):
+def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(testuser_client, helpers):
     """/query_album_match should return the catalog, album title, and artist for each matching album"""
-    # TODO: return album cover URL
     response = post_query(testuser_client).json
     assert 'albums' in response
     assert len(response['albums']) >= 1
@@ -68,6 +67,9 @@ def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(testuser_client):
         assert album['title']
         assert 'artist' in album
         assert album['artist']
+        assert 'album_cover_url' in album
+        assert album['album_cover_url']
+        helpers.validate_static_file_exists(album['album_cover_url'])
 
 
 def test_QueryAlbumMatch_EmptyUser_EmptyAlbums(emptyuser_client):

@@ -61,3 +61,20 @@ def current_album_client(app):
     response = client.post(url)
     assert response.status_code == 200
     yield from client_manager
+
+
+@pytest.fixture
+def helpers():
+    return Helpers()
+
+
+class Helpers:
+    @staticmethod
+    def validate_static_file_exists(url):
+        if not url.startswith('/static/'):
+            raise RuntimeError(f'url is not a static file: {url}')
+        file_path = url[len('/static/'):]
+        if not file_path:
+            raise RuntimeError(f'invalid static url: {url}')
+        if not (vitals.utils.static_files() / file_path).is_file():
+            raise RuntimeError(f'static file does not exist: {url}')

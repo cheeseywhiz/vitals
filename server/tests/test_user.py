@@ -297,7 +297,7 @@ class TestUserAlbum:
         assert response.status_code == 200
         assert response.json is not None
 
-    def test_UserAlbum_SetValidAlbum_GetAlbum_ReturnsSchema(self, current_album_client):
+    def test_UserAlbum_SetValidAlbum_GetAlbum_ReturnsSchema(self, current_album_client, helpers):
         """once a current album is set, getting the current album should return the correct kind of data"""
         response = TestUserAlbum.get_album(current_album_client).json
         assert 'album' in response
@@ -307,6 +307,9 @@ class TestUserAlbum:
         assert response['album']['title']
         assert 'artist' in response['album']
         assert response['album']['artist']
+        assert 'album_cover_url' in response['album']
+        assert response['album']['album_cover_url']
+        helpers.validate_static_file_exists(response['album']['album_cover_url'])
 
     def test_UserAlbum_SetValidAlbum_GetAlbum_IsCorrectAlbum(self, current_album_client):
         """once a current album is set, getting the current album should return the correct album"""

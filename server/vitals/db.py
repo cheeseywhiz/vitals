@@ -3,6 +3,7 @@ import datetime
 import os
 import pathlib
 import shlex
+import shutil
 import sys
 import click
 import flask
@@ -11,6 +12,7 @@ import numpy as np
 import psycopg
 from . import db
 from . import encode
+from . import utils
 
 
 def init_app(app):
@@ -48,19 +50,22 @@ class Album:
     title: str
     artist: str
     discogs_release_id: str | None = None
+    album_cover_url: str | None = None
     created: datetime.datetime | None = None
     descriptor: np.ndarray | None = dataclasses.field(default_factory=lambda: None, repr=None)
 
     @classmethod
     def load(cls, catalog):
         cur = db.get_db().cursor(row_factory=psycopg.rows.class_row(cls))
-        return cur.execute('SELECT catalog, title, artist FROM albums WHERE catalog = %s', (catalog, )).fetchone()
+        return cur.execute('SELECT catalog, title, artist, album_cover_url '
+                           'FROM albums WHERE catalog = %s', (catalog, )).fetchone()
 
     def serialize(self):
         return dict(
             catalog=self.catalog,
             title=self.title,
             artist=self.artist,
+            album_cover_url=self.album_cover_url,
         )
 
 
@@ -165,6 +170,12 @@ def db_reset(migrations, to_version, empty, force):
 
     print('db reset')
 
+    # reset static files
+    if utils.static_files().is_dir():
+        print(f'clearing static files {utils.static_files()}')
+        shutil.rmtree(utils.static_files())
+    utils.static_files().mkdir()
+
     # then set up the db
     if not empty:
         db_migrate(['--migrations', migrations, '--to-version', to_version])
@@ -184,20 +195,40 @@ def db_version():
 def db_migrate(migrations, to_version):
     fname_versions = sort_and_filter_migration_fnames(os.listdir(migrations), get_version(), to_version)
 
-    db = get_db()
-
     for fname, version in fname_versions:
-        with (migrations / fname).open() as f:
-            sql = f.read()
-
-        with db.transaction():
-            db.execute(sql)
-            db.execute('UPDATE db_metadata SET version = %s', (version, ))
-
         print(fname)
+        _, ext = fname.split('.', maxsplit=1)
+
+        if ext == 'sql':
+            execute_sql_migration(migrations, fname, version)
+        elif ext == 'sh':
+            execute_sh_migration(migrations, fname, version)
 
     if not fname_versions:
         print('no migrations to do')
+
+
+def execute_sql_migration(migrations, fname, version):
+    with (migrations / fname).open() as f:
+        sql = f.read()
+
+    execute_migration(version, sql)
+
+
+def execute_sh_migration(migrations, fname, version):
+    exit_code = os.system(f'bash {migrations / fname}')
+    if exit_code:
+        raise RuntimeError(f'migration {fname} exited {exit_code}')
+    execute_migration(version)
+
+
+def execute_migration(version, sql=None):
+    db = get_db()
+
+    with db.transaction():
+        if sql is not None:
+            db.execute(sql)
+        db.execute('UPDATE db_metadata SET version = %s', (version, ))
 
 
 def sort_and_filter_migration_fnames(fnames, db_version, to_version):
@@ -206,7 +237,8 @@ def sort_and_filter_migration_fnames(fnames, db_version, to_version):
     to_version = natsort.natsort_key(to_version)
 
     for fname in sorted(fnames, key=natsort.natsort_key):
-        if not fname.endswith('.sql') or fname.endswith('.data.sql'):
+        _, ext = fname.split('.', maxsplit=1)
+        if ext not in ('sql', 'sh'):
             continue
 
         version, version_key = fname_to_version(fname)
@@ -231,13 +263,13 @@ def db_load_test_data(migrations):
     db = get_db()
 
     for fname in fnames:
-        with (migrations / fname).open() as f:
-            sql = f.read()
-
-        with db.transaction():
-            db.execute(sql)
-
         print(fname)
+        _, ext = fname.split('.', maxsplit=1)
+
+        if ext == 'data.sql':
+            load_sql_data(migrations, fname)
+        elif ext == 'data.sh':
+            load_sh_data(migrations, fname)
 
     if fnames:
         db.execute("UPDATE db_metadata SET has_test_data = 'yes'")
@@ -245,12 +277,26 @@ def db_load_test_data(migrations):
         print('no test data to load')
 
 
+def load_sql_data(migrations, fname):
+    with (migrations / fname).open() as f:
+        sql = f.read()
+
+    get_db().execute(sql)
+
+
+def load_sh_data(migrations, fname):
+    exit_code = os.system(f'bash {migrations / fname}')
+    if exit_code:
+        raise RuntimeError(f'test data {fname} exited {exit_code}')
+
+
 def sort_and_filter_test_data_fnames(fnames, db_version):
     out_fnames = []
     db_version = natsort.natsort_key(db_version)
 
     for fname in sorted(fnames, key=natsort.natsort_key):
-        if not fname.endswith('.data.sql'):
+        _, ext = fname.split('.', maxsplit=1)
+        if ext not in ('data.sql', 'data.sh'):
             continue
 
         _, version_key = fname_to_version(fname)

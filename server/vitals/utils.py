@@ -53,3 +53,7 @@ def slow(*, seconds=5):
         return wrapper
 
     return decorator
+
+
+def static_files():
+    return flask.current_app.config['STATIC_FILES']

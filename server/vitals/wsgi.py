@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import pathlib
 import flask
 import flask_login
 import json
@@ -65,8 +66,16 @@ def create_app(*, vitals_testing=False):
         if not secret_key:
             raise RuntimeError('VITALS_SECRET_KEY is not set')
 
+    static_files = os.getenv('VITALS_STATIC_FILES')
+    if static_files is None or not static_files:
+        raise RuntimeError('VITALS_STATIC_FILES is not set')
+    static_files = pathlib.Path(static_files)
+    if not static_files.is_absolute():
+        raise RuntimeError(f'VITALS_STATIC_FILES is not an absolute path: {static_files}')
+
     app.config.update(
         SECRET_KEY=secret_key,
+        STATIC_FILES=static_files,
     )
 
     login_manager.init_app(app)

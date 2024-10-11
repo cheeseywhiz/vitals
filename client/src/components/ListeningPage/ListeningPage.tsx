@@ -16,7 +16,11 @@ type AlbumCoverStatus = "Album" | "NotPlaying" | "Loading";
 
 function AlbumCover({ status, album }: AlbumCoverProps) {
     switch (status) {
-        case "Album": return <p>{album.title} by {album.artist}</p>;
+        case "Album":
+            return <>
+                <img src={album.album_cover_url} />
+                <p>{album.title} by {album.artist}</p>
+            </>;
         case "NotPlaying": return <p>Not playing</p>;
         case "Loading": return <p>Loading currently playing album...</p>;
     }

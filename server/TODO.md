@@ -8,19 +8,18 @@
 
 NEXT
 
-- Add sync plan and execution flow on the client
-  - Query for the sync plan
-  - Display the add and remove lists and the error messages
-  - Prompt for confirmation
-  - If confirmed, execute the sync plan
-  - Display any HTTP error messages from the execution (should return 204 normally)
-  - Display success message otherwise
-
-## TODO
-
 - add sides information to albums table
-- do this after adding sync support
 
 ## TODO
 
 - then add stats!
+
+## TODO
+
+separate display album cover and release album cover
+
+- will need to flag if these album covers are not a match. I can probably use my image matching algorithm to determine that.
+- make the columns be display\_album\_cover and release\_album\_cover
+- initially, set display\_album\_cover to release\_album\_cover
+- in a background job, collect display\_album\_cover from the release record
+- if they are a sufficient match, set display\_album\_cover to the new image

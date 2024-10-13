@@ -39,3 +39,9 @@ export type DiscogsIdentityResponse = {
 export type DiscogsIdentity = null | {
     username: string;
 };
+
+export type DiscogsSyncPlan = {
+    addCollection: Album[];
+    rmCollection: Album[];
+    errorMessages: string[];
+};

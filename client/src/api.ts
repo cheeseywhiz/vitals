@@ -1,5 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState, DiscogsIdentityResponse } from './types';
+import type {
+    Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState, DiscogsIdentityResponse, DiscogsSyncPlan,
+} from './types';
 import { setSelectedAlbum } from './components/ListeningPage/slice';
 
 const RtkBaseQuery = fetchBaseQuery({
@@ -165,6 +167,12 @@ export const api = createApi({
             providesTags: ['DiscogsIdentity'],
             query: () => 'discogs/identity',
         }),
+        discogsSyncPlan: builder.mutation<DiscogsSyncPlan, void>({
+            query: () => 'discogs/sync_plan',
+        }),
+        executeDiscogsSync: builder.mutation<void, void>({
+            query: () => 'discogs/sync',
+        }),
     }),
 });
 
@@ -180,4 +188,6 @@ export const {
     useSetAlbumMutation,
     /* discogs */
     useDiscogsIdentityQuery,
+    useDiscogsSyncPlanMutation,
+    useExecuteDiscogsSyncMutation,
 } = api;

@@ -1,13 +1,18 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDiscogsIdentityQuery } from '../../api';
+import type { Album } from '../../types';
+import SyncPlan from './SyncPlan';
 
 function SyncPageContent() {
     const { data: discogsIdentityResponse } = useDiscogsIdentityQuery();
     if (discogsIdentityResponse === undefined) return <p>Loading discogs</p>;
     const { discogsIdentity } = discogsIdentityResponse;
 
-    return <p>Logged in to discogs as {discogsIdentity.username}</p>
+    return <>
+        <p>Logged in to discogs as {discogsIdentity.username}</p>
+        <SyncPlan />
+    </>;
 }
 
 function RequireDiscogsAuth({ children }: React.PropsWithChildren<unknown>) {

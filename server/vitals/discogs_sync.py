@@ -4,17 +4,21 @@ import pprint
 import textwrap
 import urllib
 import click
+import flask
 import flask_login
 import discogs_client
+from . import album_match
 from . import db as vitals_db
 from . import discogs_auth
 from .discogs_auth import discogs_routes
+from . import encode
 from . import utils
 
 
 def init_app(app):
     app.cli.add_command(print_collection)
     app.cli.add_command(print_sync_plan)
+    app.cli.add_command(exec_sync_plan_command)
 
 
 # Commands
@@ -37,6 +41,13 @@ def print_collection():
         pp(error_messages)
 
 
+@click.command('exec-sync-plan')
+@utils.debug
+def exec_sync_plan_command():
+    discogs = discogs_auth.get_discogs(key='csv')
+    sync_discogs_collection(username='testuser', discogs=discogs)
+
+
 @click.command('print-sync-plan')
 def print_sync_plan():
     discogs = discogs_auth.get_discogs(key='csv')
@@ -50,7 +61,11 @@ def print_sync_plan():
         else:
             print('>' * 8)
 
-        for sql, args in transaction:
+        for query in transaction:
+            if callable(query):
+                sql, args = query('DESCRIPTOR')
+            else:
+                sql, args = query
             sql = textwrap.dedent(sql).strip()
             sql = textwrap.indent(sql, ' ' * 8)
             args = tuple(map(repr, args))
@@ -295,11 +310,11 @@ def plan_to_download_album_cover(collection, catalog):
     cover_image_url = item.release.data['cover_image']
     url = urllib.parse.urlparse(cover_image_url)
     _, ext = os.path.splitext(url.path)
-    static_path = f'album_covers/{catalog}{ext}'
+    static_path = f'album_cover/{catalog}{ext}'
     album_cover_file_location = utils.static_files() / static_path
     album_cover_url = f'/static/{static_path}'
     # TODO: do not call the lambda with None
-    return (lambda descriptor: plan_to_set_album_cover(catalog, album_cover_url, descriptor))(None), dict(
+    return (lambda descriptor: plan_to_set_album_cover(catalog, album_cover_url, descriptor)), dict(
         cover_image_url=cover_image_url,
         album_cover_file_location=album_cover_file_location,
     )
@@ -373,6 +388,75 @@ def get_all_synced_albums():
     }
 
 
+# Collection Sync Execution
+
+
+def sync_discogs_collection(*, username=None, discogs=None):
+    if discogs is None:
+        discogs = discogs_auth.get_discogs()
+    collection, error_messages = get_discogs_collection(discogs=discogs)
+    add_collection, rm_collection, add_db = get_sync_with_discogs_actions(collection, username)
+    plans = get_sync_with_discogs_plan(collection, username, add_collection, rm_collection, add_db)
+    for prep_plan, transaction in plans:
+        execute_sync_plan(discogs, prep_plan, transaction)
+
+
+def execute_sync_plan(discogs, prep_plan, transaction):
+    if prep_plan is not None:
+        descriptor = download_album_cover(discogs=discogs, **prep_plan)
+
+    db = vitals_db.get_db()
+
+    with db.transaction():
+        for query in transaction:
+            if callable(query):
+                sql, args = query(encode.encode(descriptor))
+            else:
+                sql, args = query
+
+            try:
+                print((sql % args))
+            except TypeError:
+                breakpoint()
+                raise
+
+            db.execute(sql, args)
+
+
+def download_album_cover(discogs, cover_image_url, album_cover_file_location):
+    print(f'Downloading {cover_image_url}')
+    content = discogs_get_data(discogs, cover_image_url)
+    with album_cover_file_location.open('wb') as f:
+        print(f'Writing to {album_cover_file_location}')
+        f.write(content)
+    _, _, _, descriptor = album_match.imread(content, resize_width=album_match.RESIZE_WIDTH)
+    return descriptor
+
+
+def discogs_get_data(discogs, url):
+    # adapted from discogs_client.Client._request
+    # without converting the content to json
+    if discogs.verbose:
+        print(f'GET {url}')
+
+    discogs._check_user_agent()
+
+    headers = {
+        'Accept-Encoding': 'gzip',
+        'User-Agent': discogs.user_agent,
+    }
+
+    content, status_code = discogs._fetcher.fetch(discogs, 'GET', url, headers=headers)
+
+    if status_code == 204:
+        return None
+
+    if 200 <= status_code < 300:
+        return content
+
+    raise discogs_client.exceptions.HTTPError('request failed', status_code)
+
+
 # Routes
 
 
@@ -388,3 +472,12 @@ def discogs_sync_plan():
     return utils.jsonify()(
         addCollection=add_data, rmCollection=rm_data, errorMessages=error_messages,
     )
+
+
+@discogs_routes.route('/discogs/sync')
+@flask_login.login_required
+@discogs_auth.discogs_login_required
+def discogs_execute_sync():
+    sync_discogs_collection(username=flask_login.current_user.username)
+    vitals_db.set_real_data_flag()
+    return flask.Response(status=204)

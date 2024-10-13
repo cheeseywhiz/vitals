@@ -1,5 +1,6 @@
 # https://docs.opencv.org/4.x/dc/dc3/tutorial_py_matcher.html
 import os
+import io
 from pprint import pprint as pp
 import click
 import cv2 as cv
@@ -49,9 +50,16 @@ def load_im_from_stream(stream, flags=cv.IMREAD_COLOR):
 
 def imread(file, resize_width=None):
     if isinstance(file, str):
+        # file is a file path
         img = cv.imread(file)
     elif isinstance(file, werkzeug.datastructures.file_storage.FileStorage):
         img = load_im_from_stream(file)
+        if img is None:
+            # bad image
+            return
+    elif isinstance(file, bytes):
+        # file is file contents
+        img = load_im_from_stream(io.BytesIO(file))
         if img is None:
             # bad image
             return

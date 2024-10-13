@@ -8,10 +8,13 @@
 
 NEXT
 
-- execute the sync plan
-  - download image from url using discogs client
-  - save to file location
-  - execute sql transactions
+- Add sync plan and execution flow on the client
+  - Query for the sync plan
+  - Display the add and remove lists and the error messages
+  - Prompt for confirmation
+  - If confirmed, execute the sync plan
+  - Display any HTTP error messages from the execution (should return 204 normally)
+  - Display success message otherwise
 
 ## TODO
 

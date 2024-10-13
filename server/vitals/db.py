@@ -114,6 +114,11 @@ WHERE C.username = %s
     return albums
 
 
+def set_real_data_flag():
+    # TODO implement set_real_data_flag
+    ...
+
+
 # Commands
 
 

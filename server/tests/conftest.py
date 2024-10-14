@@ -57,7 +57,7 @@ def emptyuser_client(app):
 def current_album_client(app):
     client_manager = user_client('testuser', 'password', app, setup=True)
     client = next(client_manager)
-    url = flask.url_for('user.user_album', catalog='TPLP101')
+    url = flask.url_for('user.user_album', catalog='TPLP101', side=0)
     response = client.post(url)
     assert response.status_code == 200
     yield from client_manager

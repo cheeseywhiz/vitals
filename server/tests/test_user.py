@@ -236,10 +236,12 @@ class TestSignUp:
 class TestUserAlbum:
     TEST_CATALOG = 'TPLP101'  # Vespertine
 
-    def post_album(client=None, catalog=TEST_CATALOG):
+    def post_album(client=None, catalog=TEST_CATALOG, side=0):
         params = {}
         if catalog is not None:
             params['catalog'] = catalog
+        if side is not None:
+            params['side'] = side
         url = flask.url_for('user.user_album', **params)
         return client.post(url)
 
@@ -263,6 +265,11 @@ class TestUserAlbum:
         response = TestUserAlbum.post_album(catalog=None, client=testuser_client)
         assert response.status_code == 400
 
+    def test_UserAlbum_SetNoSide_Invalid(self, testuser_client):
+        """setting the current side should be rejected if no side was provided"""
+        response = TestUserAlbum.post_album(side=None, client=testuser_client)
+        assert response.status_code == 400
+
     def test_UserAlbum_SetEmptyAlbum_Invalid(self, testuser_client):
         """setting the current album to an empty album should be rejected"""
         response = TestUserAlbum.post_album(catalog='', client=testuser_client)
@@ -281,6 +288,17 @@ class TestUserAlbum:
     def test_UserAlbum_SetValidAlbum_Returns200Json(self, testuser_client, fresh_db):
         """setting the current album to a valid album should succeed and return properly formatted data"""
         response = TestUserAlbum.post_album(testuser_client)
+        assert response.status_code == 200
+        assert response.json is not None
+
+    def test_UserAlbum_SetInvalidSide_Invalid(self, testuser_client):
+        """setting the current side to a side that the release does not support is invalid"""
+        response = TestUserAlbum.post_album(side=5, client=testuser_client)
+        assert response.status_code == 400
+
+    def test_UserAlbum_SetNonzeroSide_Valid(self, testuser_client, fresh_db):
+        """setting the current side to something other than the first side should succeed"""
+        response = TestUserAlbum.post_album(side=1, client=testuser_client)
         assert response.status_code == 200
         assert response.json is not None
 
@@ -310,11 +328,14 @@ class TestUserAlbum:
         assert 'album_cover_url' in response['album']
         assert response['album']['album_cover_url']
         helpers.validate_static_file_exists(response['album']['album_cover_url'])
+        assert 'side' in response
+        assert response['side'] is not None
 
     def test_UserAlbum_SetValidAlbum_GetAlbum_IsCorrectAlbum(self, current_album_client):
         """once a current album is set, getting the current album should return the correct album"""
         response = TestUserAlbum.get_album(current_album_client).json
         assert response['album']['catalog'] == TestUserAlbum.TEST_CATALOG
+        assert response['side'] == 0
 
     def test_UserAlbum_NoCurrentAlbum_GetAlbum_ReturnsEmpty(self, testuser_client, fresh_db):
         """if there isn't an album playing then getting the current album should return an empty response"""
@@ -323,6 +344,16 @@ class TestUserAlbum:
         assert response.json is not None
         assert 'album' in response.json
         assert response.json['album'] is None
+        # not asserting anything about response.json['side']
+
+    def test_UserAlbum_SetNonZeroSide_IsCorrectSide(self, testuser_client):
+        """once a current side is set, getting the current side should return the correct side"""
+        response = TestUserAlbum.post_album(side=1, client=testuser_client)
+        assert response.status_code == 200  # smoke test
+        # force get_user to be ran again
+        del flask.g._login_user
+        response = TestUserAlbum.get_album(testuser_client).json
+        assert response['side'] == 1
 
     # DELETE /user/album
 

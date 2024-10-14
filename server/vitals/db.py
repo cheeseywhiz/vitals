@@ -49,6 +49,7 @@ class Album:
     catalog: str
     title: str
     artist: str
+    num_discs: int | None = None
     discogs_release_id: str | None = None
     album_cover_url: str | None = None
     created: datetime.datetime | None = None
@@ -57,7 +58,7 @@ class Album:
     @classmethod
     def load(cls, catalog):
         cur = db.get_db().cursor(row_factory=psycopg.rows.class_row(cls))
-        return cur.execute('SELECT catalog, title, artist, album_cover_url '
+        return cur.execute('SELECT catalog, title, artist, num_discs, album_cover_url '
                            'FROM albums WHERE catalog = %s', (catalog, )).fetchone()
 
     def serialize(self):
@@ -65,6 +66,7 @@ class Album:
             catalog=self.catalog,
             title=self.title,
             artist=self.artist,
+            num_discs=self.num_discs,
             album_cover_url=self.album_cover_url,
         )
 

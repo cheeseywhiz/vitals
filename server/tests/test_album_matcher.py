@@ -69,6 +69,8 @@ def test_QueryAlbumMatch_BasicQuery_ReturnsSchema(testuser_client, helpers):
         assert album['artist']
         assert 'album_cover_url' in album
         assert album['album_cover_url']
+        assert 'num_discs' in album
+        assert album['num_discs'] is not None
         helpers.validate_static_file_exists(album['album_cover_url'])
 
 

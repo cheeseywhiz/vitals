@@ -4,7 +4,7 @@ import flask
 import flask_login
 import psycopg
 import werkzeug
-from . import db
+from . import db as vitals_db
 from . import wsgi
 from . import utils
 
@@ -24,6 +24,7 @@ class User(flask_login.UserMixin):
     password: str
     created: datetime.datetime
     current_album: str
+    current_side: int
 
     def get_id(self):
         return self.username
@@ -31,8 +32,9 @@ class User(flask_login.UserMixin):
 
 @wsgi.login_manager.user_loader
 def get_user(username):
-    cur = db.get_db().cursor(row_factory=psycopg.rows.class_row(User))
-    return cur.execute('SELECT * FROM users WHERE username = %s', (username, )).fetchone()
+    cur = vitals_db.get_db().cursor(row_factory=psycopg.rows.class_row(User))
+    user = cur.execute('SELECT * FROM users WHERE username = %s', (username, )).fetchone()
+    return user
 
 
 @wsgi.login_manager.unauthorized_handler
@@ -58,7 +60,7 @@ def user_login():
         return utils.jsonify_error('password not provided', status=400)
     username = flask.request.json['username']
     password = flask.request.json['password']
-    user_row = db.get_db().execute('SELECT password FROM users WHERE username = %s', (username, )).fetchone()
+    user_row = vitals_db.get_db().execute('SELECT password FROM users WHERE username = %s', (username, )).fetchone()
     if user_row is None:
         return utils.jsonify_error('bad username', status=403, username=username)
     if not werkzeug.security.check_password_hash(user_row.password, password):
@@ -90,11 +92,11 @@ def user_sign_up():
     password = flask.request.json['password']
     if not password:
         return utils.jsonify_error('password not valid', status=400, password=password)
-    user_row = db.get_db().execute('SELECT 1 as exists FROM users WHERE username = %s', (username, )).fetchone()
+    user_row = vitals_db.get_db().execute('SELECT 1 as exists FROM users WHERE username = %s', (username, )).fetchone()
     if user_row is not None:
         return utils.jsonify_error('username already exists', status=409, username=username)
     pw_hashed = werkzeug.security.generate_password_hash(password)
-    db.get_db().execute('INSERT INTO users(username, password) VALUES (%s, %s);', (username, pw_hashed))
+    vitals_db.get_db().execute('INSERT INTO users(username, password) VALUES (%s, %s);', (username, pw_hashed))
     return utils.jsonify_error('successfully signed up user', status=200, username=username)
 
 
@@ -105,32 +107,46 @@ def user_album():
         catalog = flask_login.current_user.current_album
 
         if catalog is not None:
-            album = db.Album.load(catalog).serialize()
+            album = vitals_db.Album.load(catalog).serialize()
         else:
             album = None
 
-        return utils.jsonify()(album=album)
+        return utils.jsonify()(album=album, side=flask_login.current_user.current_side)
 
     username = flask_login.current_user.username
 
     if flask.request.method == 'DELETE':
-        db.get_db().execute('UPDATE users SET current_album = NULL WHERE username = %s', (username, ))
+        vitals_db.get_db().execute('UPDATE users SET current_album = NULL WHERE username = %s', (username, ))
         return flask.Response(status=204)
 
     # POST
 
-    # validation
+    # validate album
     if 'catalog' not in flask.request.args:
         return utils.jsonify_error('catalog not provided', status=400)
     catalog = flask.request.args['catalog']
     if not catalog:
         return utils.jsonify_error('catalog not valid', status=400, catalog=catalog)
-    collection_row = db.get_db().execute(
+    collection_row = vitals_db.get_db().execute(
         'SELECT 1 as exists FROM collections WHERE username = %s AND catalog = %s',
         (username, catalog)).fetchone()
     if collection_row is None:
         return utils.jsonify_error('album is not in collection', status=400, catalog=catalog)
 
+    # validate side
+    if 'side' not in flask.request.args:
+        return utils.jsonify_error('side not provided', status=400)
+
+    try:
+        side = int(flask.request.args['side'])
+    except ValueError:
+        return utils.jsonify_error(f'side is not int: {side}', status=400)
+
+    album = vitals_db.Album.load(catalog)
+    if not (side < 2 * album.num_discs):
+        return utils.jsonify_error(f'side {side} is not in release {album}', status=400)
+
     # set the currently playing album
-    db.get_db().execute('UPDATE users SET current_album = %s WHERE username = %s', (catalog, username))
+    vitals_db.get_db().execute('UPDATE users SET current_album = %s, current_side = %s WHERE username = %s',
+                               (catalog, side, username))
     return utils.jsonify()({})

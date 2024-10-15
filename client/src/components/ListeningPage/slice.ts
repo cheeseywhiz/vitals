@@ -11,10 +11,12 @@ export const cacheKeys = {
 type ListeningPageState = {
     // the selected album during the album match process
     selectedAlbum: Album | null;
+    selectedSide: number | null;
 };
 
 const initialState: ListeningPageState = {
     selectedAlbum: null,
+    selectedSide: null,
 };
 
 const listeningPageSlice = createSlice({
@@ -23,22 +25,20 @@ const listeningPageSlice = createSlice({
     reducers: {
         setSelectedAlbum: (state, action: PayloadAction<Album | null>) => {
             state.selectedAlbum = action.payload;
+            state.selectedSide = action.payload !== null ? 0 : null;
         },
-    },
-    extraReducers: (builder) => {
-        builder
-            .addMatcher(({ type, payload }) => {
-                return type.endsWith('removeMutationResult')
-                    && 'fixedCacheKey' in payload && payload.fixedCacheKey === cacheKeys.albumMatch;
-            }, (state) => {
-                state.selectedAlbum = null;
-            });
+        setSelectedSide: (state, action: PayloadAction<number | null>) => {
+            state.selectedSide = action.payload;
+        },
     },
     selectors: {
         selectSelectedAlbum: (state) => state.selectedAlbum,
+        selectSelectedSide: (state) => state.selectedSide,
     },
 });
 
-export const { setSelectedAlbum } = listeningPageSlice.actions;
-export const { selectSelectedAlbum } = listeningPageSlice.selectors;
+export const { setSelectedAlbum, setSelectedSide } = listeningPageSlice.actions;
+export const { selectSelectedAlbum, selectSelectedSide } = listeningPageSlice.selectors;
 export default listeningPageSlice.reducer;
+
+ export const SideToString = (side: number) => `Side ${String.fromCharCode(0x41 + side)}`;

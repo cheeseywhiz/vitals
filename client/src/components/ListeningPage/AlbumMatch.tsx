@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 import { useAppSelector, useAppDispatch } from '../../hooks';
-import { useAlbumMatchMutation, useSetAlbumMutation } from '../../api';
+import { useAlbumMatchMutation } from '../../api';
 import Dialog from '../Dialog';
 import { selectSelectedAlbum, setSelectedAlbum, cacheKeys } from './slice';
 
@@ -9,11 +9,14 @@ export default function AlbumMatch() {
         data: albumMatchResult, isUninitialized: isAlbumMatchUninitialized, isLoading: isAlbumMatchLoading,
         reset: clearAlbumMatchQuery,
     } ] = useAlbumMatchMutation({ fixedCacheKey: cacheKeys.albumMatch });
-    const [ triggerSetAlbum, ] = useSetAlbumMutation({ fixedCacheKey: cacheKeys.setAlbum });
     const selectedAlbum = useAppSelector(selectSelectedAlbum);
     const dispatch = useAppDispatch();
 
-    if (isAlbumMatchUninitialized) return <></>;
+    if (isAlbumMatchUninitialized) {
+        // hide this if there is no active album match
+        return <></>;
+    }
+
     if (isAlbumMatchLoading) return <p>Loading album selection...</p>;
     if (albumMatchResult === undefined) return <p>Error in albumMatch: result is undefined</p>;
 
@@ -24,11 +27,11 @@ export default function AlbumMatch() {
 
     // Dialog
     const prompt = `Play ${selectedAlbum.title}?`;
-    const onSelect = () => {
-        triggerSetAlbum(selectedAlbum);
+    const onSelect = () => clearAlbumMatchQuery();
+    const onCancel = () => {
         clearAlbumMatchQuery();
+        dispatch(setSelectedAlbum(null));
     };
-    const onCancel = () => clearAlbumMatchQuery();
 
     return <>
         <div onChange={onSelectedAlbumChange}>

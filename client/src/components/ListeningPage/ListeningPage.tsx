@@ -6,6 +6,7 @@ import ErrorView from '../ErrorView';
 import AlbumMatch from './AlbumMatch';
 import StopButton from './StopButton';
 import { selectSelectedAlbum, cacheKeys } from './slice';
+import SideSelector from './SideSelector';
 
 type AlbumCoverProps = {
     status: AlbumCoverStatus;
@@ -47,6 +48,9 @@ export default function ListeningPage() {
         reset: clearAlbumMatchQuery,
     } ] = useAlbumMatchMutation({ fixedCacheKey: cacheKeys.albumMatch });
     const selectedAlbum = useAppSelector(selectSelectedAlbum);
+    const [ _, {
+        isUninitialized: isAlbumMatchUninitialized,
+    } ] = useAlbumMatchMutation({ fixedCacheKey: cacheKeys.albumMatch });
 
     const isNotPlaying = currentAlbum !== undefined && currentAlbum.album === null;
 
@@ -91,6 +95,6 @@ export default function ListeningPage() {
         </label>
         <StopButton />
         <ListeningPageErrorView />
-        <AlbumMatch />
+        {isAlbumMatchUninitialized ? <SideSelector /> : <AlbumMatch />}
     </>;
 }

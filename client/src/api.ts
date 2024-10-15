@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type {
-    Album, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState, DiscogsIdentityResponse, DiscogsSyncPlan,
+    Album, SetAlbumQuery, UserIdentity, LoginArgs, CurrentAlbumState, AlbumMatchesState, DiscogsIdentityResponse,
+    DiscogsSyncPlan,
 } from './types';
 import { setSelectedAlbum } from './components/ListeningPage/slice';
 
@@ -129,7 +130,7 @@ export const api = createApi({
             }),
             onQueryStarted: async (_args, { dispatch, queryFulfilled }) => {
                 // clear the currently playing album optimistically
-                const patch: CurrentAlbumState = { album: null };
+                const patch: CurrentAlbumState = { album: null, side: -1 };
 
                 const patchResult = dispatch(api.util.updateQueryData('currentAlbum', undefined, (draft) => {
                     Object.assign(draft, patch);
@@ -142,14 +143,14 @@ export const api = createApi({
                 }
             },
         }),
-        setAlbum: builder.mutation<void, Album>({
-            query: (album) => ({
-                url: `user/album?catalog=${album.catalog}`,
+        setAlbum: builder.mutation<void, SetAlbumQuery>({
+            query: ({ album, side }) => ({
+                url: `user/album?catalog=${album.catalog}&side=${side}`,
                 method: 'POST',
             }),
-            onQueryStarted: async (album, { dispatch, queryFulfilled }) => {
+            onQueryStarted: async ({ album, side }, { dispatch, queryFulfilled }) => {
                 // set CurrentAlbum optimistically
-                const patch: CurrentAlbumState = { album };
+                const patch: CurrentAlbumState = { album, side };
 
                 const patchResult = dispatch(api.util.updateQueryData('currentAlbum', undefined, (draft) => {
                     Object.assign(draft, patch);

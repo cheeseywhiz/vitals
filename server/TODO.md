@@ -6,13 +6,7 @@
 
 ## TODO
 
-NEXT
-
-- add sides information to albums table
-
-## TODO
-
-- then add stats!
+- then stats!
 
 ## TODO
 

@@ -290,11 +290,12 @@ def plan_to_add_album_to_db(collection, catalog):
     item = collection[catalog]
     title = item.release.title
     artist = item.release.artists[0].name
+    num_discs = item.release.formats[0]['qty']
     discogs_release_id = item.release.id
     return '''\
-        INSERT INTO albums(catalog, title, artist, discogs_release_id)
-        VALUES (%s, %s, %s, %s);
-    ''', (catalog, title, artist, discogs_release_id)
+        INSERT INTO albums(catalog, title, artist, num_discs, discogs_release_id)
+        VALUES (%s, %s, %s, %s, %s);
+    ''', (catalog, title, artist, num_discs, discogs_release_id)
 
 
 def plan_to_add_album_to_collection(username, catalog):

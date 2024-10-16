@@ -149,4 +149,8 @@ def user_album():
     # set the currently playing album
     vitals_db.get_db().execute('UPDATE users SET current_album = %s, current_side = %s WHERE username = %s',
                                (catalog, side, username))
+
+    # track history
+    vitals_db.add_listening_history(username, album, side)
+
     return utils.jsonify()({})

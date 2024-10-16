@@ -121,6 +121,13 @@ def set_real_data_flag():
     ...
 
 
+def add_listening_history(username, album: Album, side):
+    if not (side < 2 * album.num_discs):
+        raise ValueError(f'side {side} is not in release {album}')
+    get_db().execute('INSERT INTO listening_history(username, catalog, side) VALUES (%s, %s, %s);',
+                     (username, album.catalog, side))
+
+
 # Commands
 
 

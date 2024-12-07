@@ -6,6 +6,7 @@ import ListeningPage from './ListeningPage/ListeningPage';
 import LoginPage from './LoginPage/LoginPage';
 import UserPage from './UserPage';
 import SyncPage from './SyncPage/SyncPage';
+import Color from './Color';
 
 function RequireAuth({ children }: React.PropsWithChildren<unknown>) {
     // optimistically render children unless the identity comes back as not logged in
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="login" element={<LoginPage />} />
             <Route path="me" element={<RequireAuth><UserPage /></RequireAuth>} />
             <Route path="sync" element={<RequireAuth><SyncPage /></RequireAuth>} />
+            <Route path="color" element={<Color />} />
         </Routes>
         <NavBar />
     </>;
